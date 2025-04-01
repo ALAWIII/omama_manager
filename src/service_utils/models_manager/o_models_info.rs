@@ -1,11 +1,34 @@
 use super::super::get_current_path;
+use crate::database::get_ochatdb_connection;
 use crate::OResult;
 use ollama_models_info_fetcher::{
     convert_to_json, fetch_all_available_models, fetch_model_info, Model,
 };
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::from_reader;
 use std::fs::File;
 use std::io::{BufReader, Write};
+use surrealdb::sql::Thing;
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct OModelInfo {
+    #[serde(deserialize_with = "deserialize_id")]
+    pub id: String,
+    #[serde(flatten)]
+    pub model: Model,
+}
+
+fn deserialize_id<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let thing = Thing::deserialize(deserializer)?;
+    if let surrealdb::sql::Id::String(num) = thing.id {
+        Ok(num)
+    } else {
+        Err(serde::de::Error::custom("Expected a numeric ID"))
+    }
+}
 
 /// get all models to json , returns the path as string!!!
 pub async fn load_models_from_web_to_json() -> OResult<String> {
@@ -38,4 +61,63 @@ pub async fn load_models_from_json_file() -> OResult<Vec<Model>> {
     let reader = BufReader::new(file);
     let models: Vec<Model> = from_reader(reader)?;
     Ok(models)
+}
+
+pub async fn fetch_models_from_web_to_db() -> OResult<()> {
+    let models = fetch_all_available_models().await?;
+    let db = get_ochatdb_connection().await;
+    for model_name in models {
+        if let Ok(m) = fetch_model_info(&model_name).await {
+            let mi = OModelInfo {
+                id: m.name().to_string(),
+                model: m,
+            };
+            db.upsert::<Option<OModelInfo>>(("model", &mi.id))
+                .content(mi)
+                .await?;
+        }
+    }
+
+    Ok(())
+}
+pub async fn fetch_models_from_db() -> OResult<Vec<OModelInfo>> {
+    let db = get_ochatdb_connection().await;
+    let resp: Vec<OModelInfo> = db.select("model").await?;
+    Ok(resp)
+}
+
+#[cfg(test)]
+mod quick_test {
+    use super::OModelInfo;
+    use ollama_models_info_fetcher::{fetch_all_available_models, fetch_model_info};
+    use ollama_td::OResult;
+
+    use crate::{
+        database::get_ochatdb_connection,
+        service_utils::{fetch_models_from_db, fetch_models_from_web_to_db},
+    };
+
+    #[tokio::test]
+    async fn check_models_from_web_to_db() -> OResult<()> {
+        let models = fetch_all_available_models().await?;
+        let db = get_ochatdb_connection().await;
+        if let Ok(m) = fetch_model_info(&models[0]).await {
+            let mi = OModelInfo {
+                id: m.name().to_string(),
+                model: m,
+            };
+            let v: Option<OModelInfo> = db.upsert(("model", &mi.id)).content(mi).await?;
+            //dbg!(&v);
+            assert!(v.is_some());
+        }
+        Ok(())
+    }
+    #[tokio::test]
+    async fn check_models_from_db() -> OResult<()> {
+        fetch_models_from_web_to_db().await?;
+        let models = fetch_models_from_db().await?;
+        //dbg!(&models);
+        assert!(!models.is_empty());
+        Ok(())
+    }
 }

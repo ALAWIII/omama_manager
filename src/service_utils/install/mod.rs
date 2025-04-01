@@ -1,3 +1,4 @@
+#![allow(unused)]
 mod linux;
 mod wind_mac;
 
