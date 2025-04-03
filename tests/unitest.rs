@@ -1,11 +1,19 @@
 use ollama_rs::models::pull::PullModelStatusStream;
 use omama_manager::database::{
-    self, get_all_chats, get_all_messages, get_odocdb_connection, get_summary_of_chat,
+    self, get_all_chats, get_all_messages, get_omamadb_connection, get_summary_of_chat,
+    insert_message, store_summary_of_chat, ODatabse, OMessage,
 };
-use omama_manager::rag::{generate_embeddings, store_document, EMBEDDING_MODEL};
-use omama_manager::service_utils::*;
+use omama_manager::rag::{
+    extract_queries, generate_embeddings, generate_response, rewrite_query, search_similar_docs,
+    store_document, Document, EMBEDDING_MODEL,
+};
 use omama_manager::OResult;
+use omama_manager::{create_message, service_utils::*, Model, ModelBuilder, OConfig};
+use rig::completion::CompletionError;
 use rig::embeddings::EmbeddingModel;
+use rig::providers::azure::O1;
+use rig::streaming::StreamingResult;
+use std::ops::Deref;
 use std::path::Path;
 use tokio::io::{stdout, AsyncWriteExt};
 use tokio_stream::StreamExt;
@@ -90,7 +98,7 @@ async fn check_ochat_connection() {
     let path =
         Path::new("/run/media/allawiii/projects/zed/Rust/omama_manager/target/debug/deps/omamadb");
 
-    database::get_ochatdb_connection().await;
+    database::get_omamadb_connection(ODatabse::Ochat).await;
     assert!(path.exists());
 }
 
@@ -122,7 +130,7 @@ async fn fetch_summary_of_chat() -> OResult<()> {
 }
 #[tokio::test]
 async fn check_odoc_connection() {
-    let db = get_odocdb_connection().await;
+    let db = get_omamadb_connection(ODatabse::Odoc).await;
 }
 //--------------------------rag tests--------------------
 
@@ -154,5 +162,93 @@ async fn store_docs() -> OResult<()> {
     let doc = store_document(expected.clone()).await?;
     dbg!(&doc);
     assert_eq!(doc, expected);
+    Ok(())
+}
+
+async fn generate_docs() -> Vec<Document> {
+    let words = [
+        "hello,world",
+        "eid saeed",
+        "eid mubark",
+        "shawarma is too healthy",
+        "chicken are so cute",
+    ];
+    let mut words_doc = vec![];
+    for w in words {
+        words_doc.push(generate_embeddings(w).await.unwrap());
+    }
+    words_doc
+}
+#[tokio::test]
+async fn store_n_docs() {
+    let docs = generate_docs().await;
+    for d in docs {
+        store_document(d).await;
+    }
+}
+
+#[tokio::test]
+pub async fn check_similar_search() -> OResult<()> {
+    let search_doc = generate_embeddings("chicken").await?;
+    let docs = search_similar_docs(search_doc, 1, 0.0).await?;
+    dbg!(&docs);
+    assert!(!docs.is_empty());
+    Ok(())
+}
+#[tokio::test]
+async fn decompose_queries_test() {
+    let rewrite_q = rewrite_query(
+        "qwen2.5:1.5b",
+        "Tell me about the history of wars and its impact on civilization.",
+    )
+    .await
+    .unwrap();
+    dbg!(&rewrite_q);
+    let queries = extract_queries("qwen2.5:1.5b", &rewrite_q).await;
+    dbg!(queries);
+}
+//----------------test generation------------
+#[tokio::test]
+async fn generate_response_test() {
+    let prompt = "Tell me about the history of wars in short statement.";
+    let mut response = generate_response("qwen2.5:1.5b", prompt).await.unwrap();
+    while let Some(Ok(w)) = response.next().await {
+        print!("{w}");
+    }
+}
+//----------------------------------------test chat-----------------
+
+async fn stream_chat(mut streamer: StreamingResult) -> String {
+    let mut response = "".to_owned();
+    while let Some(Ok(word)) = streamer.next().await {
+        response.push_str(&word.to_string());
+        print!("{}", word);
+    }
+    response
+}
+#[tokio::test]
+async fn check_create_message() {
+    let conf = OConfig {
+        user_message: "Tell me about the history of wars in short statement".to_string(),
+        c_id: 1743076482649,
+        model: ModelBuilder::new().name("deepseek-r1:1.5b").build(),
+    };
+    let resp = create_message(conf, stream_chat).await;
+    //assert!(resp.is_ok());
+}
+#[tokio::test]
+async fn check_summary_store() {
+    let summary = "lets eat shawarma";
+    let st = store_summary_of_chat(1743076482649, summary).await;
+    assert!(st.is_ok());
+}
+//----------------//-----////--
+
+#[tokio::test]
+async fn check_message_insertion() -> OResult<()> {
+    let omsg = OMessage::new();
+    let id = *omsg.id();
+    let msg_inserted = insert_message(omsg).await?;
+    assert_eq!(id, *msg_inserted.id());
     Ok(())
 }

@@ -1,6 +1,9 @@
 use std::hash::Hash;
 
-use crate::{database::get_odocdb_connection, OResult, OM_CLIENT};
+use crate::{
+    database::{get_omamadb_connection, ODatabse},
+    OResult, OM_CLIENT,
+};
 use nanoid::nanoid;
 use once_cell::sync::Lazy;
 use rig::{
@@ -29,7 +32,10 @@ pub struct Document {
     #[serde(deserialize_with = "deserialize_id")]
     pub id: String,
     pub content: String,
+    #[serde(skip_deserializing)]
     pub embedding: Vec<f64>,
+    #[serde(skip_serializing)]
+    pub accuracy: f64,
 }
 impl PartialEq for Document {
     fn eq(&self, other: &Self) -> bool {
@@ -48,11 +54,12 @@ pub async fn generate_embeddings(text: &str) -> OResult<Document> {
         id,
         content: embedding.document,
         embedding: embedding.vec,
+        accuracy: 0.0,
     })
 }
 
 pub async fn store_document(doc: Document) -> OResult<Document> {
-    let db = get_odocdb_connection().await;
+    let db = get_omamadb_connection(ODatabse::Odoc).await;
     let docy: Option<Document> = db.create("document").content(doc).await?.unwrap();
     Ok(docy.unwrap())
 }

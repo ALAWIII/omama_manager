@@ -1,5 +1,5 @@
 use super::super::get_current_path;
-use crate::database::get_ochatdb_connection;
+use crate::database::{get_omamadb_connection, ODatabse};
 use crate::OResult;
 use ollama_models_info_fetcher::{
     convert_to_json, fetch_all_available_models, fetch_model_info, Model,
@@ -65,7 +65,7 @@ pub async fn load_models_from_json_file() -> OResult<Vec<Model>> {
 
 pub async fn fetch_models_from_web_to_db() -> OResult<()> {
     let models = fetch_all_available_models().await?;
-    let db = get_ochatdb_connection().await;
+    let db = get_omamadb_connection(ODatabse::Ochat).await;
     for model_name in models {
         if let Ok(m) = fetch_model_info(&model_name).await {
             let mi = OModelInfo {
@@ -81,7 +81,7 @@ pub async fn fetch_models_from_web_to_db() -> OResult<()> {
     Ok(())
 }
 pub async fn fetch_models_from_db() -> OResult<Vec<OModelInfo>> {
-    let db = get_ochatdb_connection().await;
+    let db = get_omamadb_connection(ODatabse::Ochat).await;
     let resp: Vec<OModelInfo> = db.select("model").await?;
     Ok(resp)
 }
@@ -93,14 +93,14 @@ mod quick_test {
     use ollama_td::OResult;
 
     use crate::{
-        database::get_ochatdb_connection,
+        database::{get_omamadb_connection, ODatabse},
         service_utils::{fetch_models_from_db, fetch_models_from_web_to_db},
     };
 
     #[tokio::test]
     async fn check_models_from_web_to_db() -> OResult<()> {
         let models = fetch_all_available_models().await?;
-        let db = get_ochatdb_connection().await;
+        let db = get_omamadb_connection(ODatabse::Ochat).await;
         if let Ok(m) = fetch_model_info(&models[0]).await {
             let mi = OModelInfo {
                 id: m.name().to_string(),
