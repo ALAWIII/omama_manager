@@ -1,11 +1,15 @@
+use ollama_td::OResult;
 use rig::{
     completion::{CompletionError, Prompt},
     streaming::{StreamingPrompt, StreamingResult},
 };
 
 use crate::{
-    database::get_summary_of_chat,
-    rag::{generate_embeddings, search_similar_docs, Document},
+    database::{
+        get_summary_of_chat, insert_chat, insert_message, relate_m_c, store_summary_of_chat, OChat,
+        OMessage,
+    },
+    rag::{generate_embeddings, search_similar_docs, store_document, Document},
     Model, OM_CLIENT,
 };
 
@@ -28,16 +32,34 @@ pub async fn create_message(
         .unwrap_or("".to_string());
     let agent = OM_CLIENT
         .agent(config.model.name())
+        .preamble("you are a perfect AI assistant in all disciplines.")
         .context(&context)
         .context(&format!("information:\n{docs}"))
         .build();
     let resp = f_stream(agent.stream_prompt(&config.user_message).await?).await;
+    //----------------------storing the message in ochat db---------------------
+    let mut oms = OMessage::new();
+    oms.add_message(&config.user_message);
+    oms.add_response(&resp);
+    let oms = insert_message(oms).await.unwrap_or_default();
+    relate_m_c(config.c_id, *oms.id()).await.unwrap_or_default();
+    //---------------------------------generating summary and store them in ochat + odoc db's--------------------
     let prompt = format!("user:{}\nAI:{}", config.user_message, resp);
     let summary = create_summary(config.model.name(), prompt).await;
+    dbg!(&summary);
+    store_summary_of_chat(config.c_id, &summary)
+        .await
+        .unwrap_or_default();
+    store_summary_as_doc(summary).await.unwrap();
 
     Ok(())
 }
 
+async fn store_summary_as_doc(summary: String) -> OResult<()> {
+    let doc = generate_embeddings(&summary).await?;
+    store_document(doc).await?;
+    Ok(())
+}
 async fn create_summary(model: &str, prompt: String) -> String {
     let agent_summary = OM_CLIENT
         .agent(model)
@@ -53,4 +75,9 @@ async fn merge_docs(msg_doc: Document) -> String {
         .map(|d| d.content)
         .reduce(|d1, d2| format!("{d1}\n{d2}"))
         .unwrap_or("".into())
+}
+
+pub async fn create_chat() -> OChat {
+    let o_chat = OChat::new();
+    insert_chat(o_chat).await.unwrap_or_default()
 }

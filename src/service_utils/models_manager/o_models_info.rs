@@ -1,6 +1,7 @@
 use super::super::get_current_path;
 use crate::database::{get_omamadb_connection, ODatabse};
 use crate::OResult;
+
 use ollama_models_info_fetcher::{
     convert_to_json, fetch_all_available_models, fetch_model_info, Model,
 };
@@ -23,8 +24,8 @@ where
     D: Deserializer<'de>,
 {
     let thing = Thing::deserialize(deserializer)?;
-    if let surrealdb::sql::Id::String(num) = thing.id {
-        Ok(num)
+    if let surrealdb::sql::Id::String(name) = thing.id {
+        Ok(name)
     } else {
         Err(serde::de::Error::custom("Expected a numeric ID"))
     }
@@ -86,6 +87,15 @@ pub async fn fetch_models_from_db() -> OResult<Vec<OModelInfo>> {
     Ok(resp)
 }
 
+pub async fn fetch_model_by_name(name: &str) -> OResult<Model> {
+    let db = get_omamadb_connection(ODatabse::Ochat).await;
+    let mut results = db
+        .query("SELECT * OMIT id FROM type::thing('model',$name)")
+        .bind(("name", name.to_owned()))
+        .await?;
+    let model: Option<Model> = results.take(0).unwrap_or_default();
+    Ok(model.unwrap_or_default())
+}
 #[cfg(test)]
 mod quick_test {
     use super::OModelInfo;

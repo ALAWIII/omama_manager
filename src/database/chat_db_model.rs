@@ -2,6 +2,8 @@ use chrono::{DateTime, Local, TimeZone};
 use serde::{Deserialize, Deserializer, Serialize};
 use surrealdb::sql::Thing;
 
+use super::{get_omamadb_connection, ODatabse};
+
 fn deserialize_id<'de, D>(deserializer: D) -> Result<i64, D::Error>
 where
     D: Deserializer<'de>,
@@ -21,10 +23,10 @@ where
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct OChat {
     #[serde(deserialize_with = "deserialize_id")]
-    id: i64,
-    name: String,
+    pub id: i64,
+    pub name: String,
     #[serde(skip_deserializing)]
-    summary: String,
+    pub summary: String,
 }
 
 impl OChat {
@@ -41,8 +43,18 @@ impl OChat {
     pub fn name(&self) -> &str {
         &self.name
     }
-    pub fn update_name(&mut self, name: &str) {
+    pub async fn update_name(&mut self, name: &str) {
         self.name = name.to_string();
+        let db = get_omamadb_connection(ODatabse::Ochat).await;
+        let o: Option<OChat> = db
+            .upsert(("chat", self.id))
+            .content(OChat {
+                id: self.id,
+                name: self.name.to_owned(),
+                summary: self.summary.to_owned(),
+            })
+            .await
+            .unwrap();
     }
     pub fn get_time_creation(&self) -> String {
         let t: DateTime<Local> = Local.timestamp_opt(self.id, 0).unwrap();

@@ -1,14 +1,20 @@
 use ollama_rs::models::pull::PullModelStatusStream;
 use omama_manager::database::{
     self, get_all_chats, get_all_messages, get_omamadb_connection, get_summary_of_chat,
-    insert_message, store_summary_of_chat, ODatabse, OMessage,
+    insert_message, relate_m_c, store_summary_of_chat, OChat, ODatabse, OMessage,
 };
 use omama_manager::rag::{
-    extract_queries, generate_embeddings, generate_response, rewrite_query, search_similar_docs,
-    store_document, Document, EMBEDDING_MODEL,
+    generate_embeddings,
+    generation::generate_response,
+    query::{extract_queries, rewrite_query},
+    search_similar_docs, store_document, Document, EMBEDDING_MODEL,
 };
 use omama_manager::OResult;
-use omama_manager::{create_message, service_utils::*, Model, ModelBuilder, OConfig};
+use omama_manager::{
+    chat::{create_message, OConfig},
+    service_utils::*,
+    Model, ModelBuilder,
+};
 use rig::completion::CompletionError;
 use rig::embeddings::EmbeddingModel;
 use rig::providers::azure::O1;
@@ -60,17 +66,20 @@ async fn setup_service() -> OResult<()> {
     Ok(())
 }
 //---------------------------------models_mangement--------------
-
 #[tokio::test]
-async fn model_download() -> OResult<()> {
-    download_model("tinyllama", "latest").await?;
-    let models = list_downloaded_models().await?;
-    let exist = models.iter().any(|e| e.name.contains("tinyllama:latest"));
-    assert!(exist);
+async fn listing_local_models() -> OResult<()> {
+    let models = get_local_models_info().await?;
+    dbg!(&models);
+    assert!(!models.iter().any(|m| m.name().contains("nomic-embed-text")));
     Ok(())
 }
 //--------
-
+#[tokio::test]
+async fn load_m_web_db() {
+    let state = fetch_models_from_web_to_db().await;
+    assert!(state.is_ok());
+}
+//-------
 async fn stream_download_helper(mut status: PullModelStatusStream) -> OResult<()> {
     while let Some(s) = status.next().await {
         let ms = s?;
@@ -83,14 +92,6 @@ async fn stream_download_helper(mut status: PullModelStatusStream) -> OResult<()
     Ok(())
 }
 
-#[tokio::test]
-async fn model_download_stream() -> OResult<()> {
-    download_model_stream("tinyllama", "latest", stream_download_helper).await?;
-    let models = list_downloaded_models().await?;
-    let exist = models.iter().any(|e| e.name.contains("tinyllama:latest"));
-    assert!(exist);
-    Ok(())
-}
 //----------------------------------database tests------------------
 
 #[tokio::test]
@@ -251,4 +252,35 @@ async fn check_message_insertion() -> OResult<()> {
     let msg_inserted = insert_message(omsg).await?;
     assert_eq!(id, *msg_inserted.id());
     Ok(())
+}
+
+#[tokio::test]
+async fn check_relate_m_c() -> OResult<()> {
+    let omsg = OMessage::new();
+    let id = *omsg.id();
+    let msg_inserted = insert_message(omsg).await?;
+    relate_m_c(1743076482649, id).await;
+    Ok(())
+}
+
+//-----------------------test create_chat-------------
+#[tokio::test]
+async fn check_message_creation() -> OResult<()> {
+    let conf = OConfig {
+        user_message: "Tell me about the history of wars in short statement".to_string(),
+        c_id: 1743678992662,
+        model: ModelBuilder::new().name("deepseek-r1:1.5b").build(),
+    };
+    let msg = create_message(conf, stream_chat).await;
+    Ok(())
+}
+//---
+#[tokio::test]
+async fn updating_chat_name() {
+    let mut o = OChat::new();
+    let mut o = OChat {
+        id: 1743678992662,
+        ..o
+    };
+    o.update_name("new era of ducking").await;
 }

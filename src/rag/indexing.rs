@@ -34,6 +34,7 @@ pub struct Document {
     pub content: String,
     #[serde(skip_deserializing)]
     pub embedding: Vec<f64>,
+    #[serde(default)]
     #[serde(skip_serializing)]
     pub accuracy: f64,
 }
