@@ -1,7 +1,7 @@
-use crate::OResult;
+use crate::{Result, anyhow};
 use ollama_td::{
-    download, download_customize, OllamaDownload, OllamaDownloadBuilder, Platform, TVersion, Unix,
-    Windows,
+    OllamaDownload, OllamaDownloadBuilder, Platform, TVersion, Unix, Windows, download,
+    download_customize,
 };
 
 use reqwest::Response;
@@ -10,9 +10,9 @@ use std::{fs::File, path::Path};
 use tokio::fs::remove_file;
 use zip_extract::extract;
 
-pub(super) async fn install_windows_arm_tool<T>(f_stream: T) -> OResult<()>
+pub(super) async fn install_windows_arm_tool<T>(f_stream: T) -> Result<()>
 where
-    T: AsyncFnOnce(Response, &mut Path) -> OResult<PathBuf>,
+    T: AsyncFnOnce(Response, &mut Path) -> Result<PathBuf>,
 {
     let platform = Platform::Windows(Windows::Arm);
     let path_zip = download_customize(ollama_build(platform)?, f_stream).await?;
@@ -20,16 +20,17 @@ where
         path_zip.as_path(),
         &path_zip
             .parent()
-            .ok_or("failed to get the parent of current directory , arm ollama tool")?
+            .ok_or("failed to get the parent of current directory , arm ollama tool")
+            .map_err(|e| anyhow!(format!("{e}")))?
             .join("ollama-windows"),
     )
     .await?;
     Ok(())
 }
 
-pub(super) async fn install_windows_x86_tool<T>(f_stream: T) -> OResult<()>
+pub(super) async fn install_windows_x86_tool<T>(f_stream: T) -> Result<()>
 where
-    T: AsyncFnOnce(Response, &mut Path) -> OResult<PathBuf>,
+    T: AsyncFnOnce(Response, &mut Path) -> Result<PathBuf>,
 {
     let platform = Platform::Windows(Windows::X86);
     let path_zip = download_customize(ollama_build(platform)?, f_stream).await?;
@@ -37,16 +38,17 @@ where
         path_zip.as_path(),
         &path_zip
             .parent()
-            .ok_or("failed to get the parent of current directory , x86 ollama tool")?
+            .ok_or("failed to get the parent of current directory , x86 ollama tool")
+            .map_err(|e| anyhow!(format!("{e}")))?
             .join("ollama-windows"),
     )
     .await?;
     Ok(())
 }
 
-pub(super) async fn install_macos_tool<T>(f_stream: T) -> OResult<()>
+pub(super) async fn install_macos_tool<T>(f_stream: T) -> Result<()>
 where
-    T: AsyncFnOnce(Response, &mut Path) -> OResult<PathBuf>,
+    T: AsyncFnOnce(Response, &mut Path) -> Result<PathBuf>,
 {
     let platform = Platform::Unix(Unix::DarwinZip);
     let path_zip = download_customize(ollama_build(platform)?, f_stream).await?;
@@ -54,20 +56,21 @@ where
         path_zip.as_path(),
         path_zip
             .parent()
-            .ok_or("failed to get the parent of current directory , mac ollama tool")?,
+            .ok_or("failed to get the parent of current directory , mac ollama tool")
+            .map_err(|e| anyhow!(format!("{e}")))?,
     )
     .await?;
     Ok(())
 }
 
-fn ollama_build(platform: Platform) -> OResult<OllamaDownload> {
+fn ollama_build(platform: Platform) -> Result<OllamaDownload> {
     OllamaDownloadBuilder::new()?
         .platform(platform)
         .tag_version(TVersion::Latest)
         .build()
 }
 
-async fn unpack_zip(path_zip: &Path, destination: &Path) -> OResult<()> {
+async fn unpack_zip(path_zip: &Path, destination: &Path) -> Result<()> {
     extract(File::open(path_zip)?, destination, false)?;
     remove_file(path_zip).await?;
     Ok(())
@@ -77,14 +80,14 @@ async fn unpack_zip(path_zip: &Path, destination: &Path) -> OResult<()> {
 #[cfg(test)]
 mod quick_test {
     use super::unpack_zip;
-    use ollama_td::OResult;
+    use ollama_td::Result;
     use std::io::{BufWriter, Read, Write};
     use std::{
         fs::{File, OpenOptions},
         path::Path,
     };
     use tokio::fs::remove_file;
-    use zip::{write::SimpleFileOptions, ZipWriter};
+    use zip::{ZipWriter, write::SimpleFileOptions};
     fn compress_file(file_path: &str, zip_path: &str) -> zip::result::ZipResult<()> {
         //let file = File::open(file_path)?;
         let zip_file = OpenOptions::new()
@@ -109,7 +112,7 @@ mod quick_test {
     }
 
     #[tokio::test]
-    async fn check_unpack_zip() -> OResult<()> {
+    async fn check_unpack_zip() -> Result<()> {
         let test_dir = Path::new("./loloa.txt");
         File::options()
             .create(true)
@@ -126,7 +129,7 @@ mod quick_test {
         Ok(())
     }
     #[tokio::test]
-    async fn check_unpack_zip_create_child_dir() -> OResult<()> {
+    async fn check_unpack_zip_create_child_dir() -> Result<()> {
         let test_dir = Path::new("./loloa.txt");
         File::options()
             .create(true)
@@ -144,7 +147,7 @@ mod quick_test {
     }
 
     #[tokio::test]
-    async fn check_unpack_zip_parent_not_exist() -> OResult<()> {
+    async fn check_unpack_zip_parent_not_exist() -> Result<()> {
         let test_dir = Path::new("./loloa.txt");
         File::options()
             .create(true)

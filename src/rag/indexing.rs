@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use crate::{
     database::{get_omamadb_connection, ODatabse},
-    OResult, OM_CLIENT,
+    Result, OM_CLIENT,
 };
 use nanoid::nanoid;
 use once_cell::sync::Lazy;
@@ -48,7 +48,7 @@ impl Hash for Document {
         self.id.hash(state);
     }
 }
-pub async fn generate_embeddings(text: &str) -> OResult<Document> {
+pub async fn generate_embeddings(text: &str) -> Result<Document> {
     let id = nanoid!(12);
     let embedding = (*EMBEDDING_MODEL).embed_text(text).await?;
     Ok(Document {
@@ -59,7 +59,7 @@ pub async fn generate_embeddings(text: &str) -> OResult<Document> {
     })
 }
 
-pub async fn store_document(doc: Document) -> OResult<Document> {
+pub async fn store_document(doc: Document) -> Result<Document> {
     let db = get_omamadb_connection(ODatabse::Odoc).await;
     let docy: Option<Document> = db.create("document").content(doc).await?.unwrap();
     Ok(docy.unwrap())

@@ -1,9 +1,4 @@
-use ollama_td::OResult;
-use rig::{
-    completion::{CompletionError, Prompt},
-    streaming::{StreamingPrompt, StreamingResult},
-};
-
+use crate::Result;
 use crate::{
     database::{
         get_summary_of_chat, insert_chat, insert_message, relate_m_c, store_summary_of_chat, OChat,
@@ -11,6 +6,11 @@ use crate::{
     },
     rag::{generate_embeddings, search_similar_docs, store_document, Document},
     Model, OM_CLIENT,
+};
+pub use rig::streaming::StreamingResult;
+use rig::{
+    completion::{CompletionError, Prompt},
+    streaming::StreamingPrompt,
 };
 
 #[derive(Debug, Default)]
@@ -55,7 +55,7 @@ pub async fn create_message(
     Ok(())
 }
 
-async fn store_summary_as_doc(summary: String) -> OResult<()> {
+async fn store_summary_as_doc(summary: String) -> Result<()> {
     let doc = generate_embeddings(&summary).await?;
     store_document(doc).await?;
     Ok(())

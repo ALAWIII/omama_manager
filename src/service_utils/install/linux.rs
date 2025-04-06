@@ -4,7 +4,7 @@ use std::process::Stdio;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
-use crate::OResult;
+use crate::Result;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct WrongPass(pub String);
@@ -16,7 +16,7 @@ impl Display for WrongPass {
 }
 impl Error for WrongPass {}
 
-async fn check_password(password: &str) -> OResult<bool> {
+async fn check_password(password: &str) -> Result<bool> {
     let mut sudo = Command::new("sudo")
         .args(["-S", "-k", "true"])
         .stdin(Stdio::piped())
@@ -39,12 +39,9 @@ async fn check_password(password: &str) -> OResult<bool> {
         .unwrap_or(false))
 }
 
-pub(super) async fn install_linux_tool(password: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub(super) async fn install_linux_tool(password: &str) -> Result<()> {
     if !check_password(password).await? {
-        return Err(Box::new(WrongPass(format!(
-            "wrong password : {}",
-            password
-        ))));
+        return Err(WrongPass(format!("wrong password : {}", password)).into());
     }
 
     let mut sudo = Command::new("sudo")

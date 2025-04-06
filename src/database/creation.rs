@@ -1,4 +1,4 @@
-use crate::{Asset, OResult};
+use crate::{Asset, Result};
 use std::fmt::Display;
 use surrealdb::{
     engine::local::{Db, RocksDb},
@@ -28,7 +28,7 @@ impl Display for ODatabse {
     }
 }
 
-async fn connect_db() -> OResult<Surreal<Db>> {
+async fn connect_db() -> Result<Surreal<Db>> {
     let db_path = get_current_path()?.join("omamadb");
     let db = Surreal::new::<RocksDb>(db_path).await?;
     db.use_ns("o_base").await?;
@@ -68,13 +68,13 @@ pub async fn get_omamadb_connection(db_name: ODatabse) -> Surreal<Db> {
 //------------private tests------------
 #[cfg(test)]
 mod quick_test {
-    use ollama_td::OResult;
+    use ollama_td::Result;
 
     use crate::Asset;
 
     use super::connect_db;
 
-    async fn execute_queries() -> OResult<()> {
+    async fn execute_queries() -> Result<()> {
         let o_chat_schema = Asset::get("ochat_schema.surql").unwrap();
         let mut buffer = String::from_utf8(o_chat_schema.data.to_vec());
         let db = connect_db().await?;

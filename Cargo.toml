@@ -1,14 +1,14 @@
 [package]
 name = "omama_manager"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 
 tokio = { version = "1.43.0", features = ["full"] }
 reqwest = { version = "0.12.12", features = ["rustls-tls"] }
-ollama_td = "0.3.0"
-ollama_models_info_fetcher = "0.1.1"
+ollama_td = "0.3.1"
+ollama_models_info_fetcher = "0.1.2"
 zip-extract = "0.2.1"
 
 serde = { version = "1.0.217", features = ["derive"] }
@@ -26,6 +26,7 @@ rust-embed = "8.6.0"
 chrono = "0.4.40"
 nanoid = "0.4.0"
 serde_with = "3.12.0"
+anyhow = "1.0.97"
 
 [dev-dependencies]
 zip = "2.2.2"

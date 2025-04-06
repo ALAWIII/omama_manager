@@ -133,6 +133,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea50b14b7a4b9343f8c627a7a53c52076482bd4bdad0a24fd3ec533ed616cc2c"
 
 [[package]]
+name = "anyhow"
+version = "1.0.97"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dcfed56ad506cb2c684a14971b8861fdc3baaaae314b9e5f9bb532cbe3ba7a4f"
+
+[[package]]
 name = "approx"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2681,10 +2687,11 @@ dependencies = [
 
 [[package]]
 name = "ollama_models_info_fetcher"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebb30c1dee0b58965e643033c4d87276bce924c52e1d757008b168b43e43cc14"
+checksum = "959c4542550a1a2364df249d2b1a0f93f3be9ee5c303816f627ca63b8ff4fe6c"
 dependencies = [
+ "anyhow",
  "htmd",
  "once_cell",
  "regex",
@@ -2697,10 +2704,11 @@ dependencies = [
 
 [[package]]
 name = "ollama_td"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "214ff79d6e84f2c1fc1f48b4ea1b1e4e1070513ad2c7b99bb4a3f0ec8ece9b58"
+checksum = "13d16d77251fb0dde9c3c3a71578bc9aee0b49982ba568a9bb8e3a6d45fe9f12"
 dependencies = [
+ "anyhow",
  "bytes",
  "futures-util",
  "octocrab",
@@ -2713,6 +2721,7 @@ dependencies = [
 name = "omama_manager"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
  "nanoid",
  "ollama-rs",

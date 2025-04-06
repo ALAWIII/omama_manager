@@ -1,40 +1,39 @@
 use crate::{
-    database::{get_omamadb_connection, ODatabse},
-    Model, OResult,
+    Model, Result,
+    database::{ODatabse, get_omamadb_connection},
 };
 use ollama_models_info_fetcher::ModelBuilder;
-use ollama_rs::{models::pull::PullModelStatusStream, Ollama};
+use ollama_rs::{Ollama, models::pull::PullModelStatusStream};
 use once_cell::sync::Lazy;
-use std::collections::HashMap;
-use std::future::Future;
+use std::{collections::HashMap, pin::Pin};
 
 const MODEL_INFO: &str = "SELECT * OMIT id FROM type::thing('model',$m_name);";
 
 static OL_CLIENT: Lazy<Ollama> = Lazy::new(Ollama::default);
 
-pub async fn download_model(name: &str, token_size: &str) -> OResult<()> {
+pub async fn download_model(name: &str, token_size: &str) -> Result<()> {
     let model_name = format!("{}:{}", name, token_size);
     OL_CLIENT.pull_model(model_name, false).await?;
     Ok(())
 }
 
-pub async fn download_model_stream<F, Fut>(name: &str, token_size: &str, f_stream: F) -> OResult<()>
+pub async fn download_model_stream<F>(name: &str, token_size: &str, f_stream: F) -> Result<()>
 where
-    F: FnOnce(PullModelStatusStream) -> Fut,
-    Fut: Future,
+    F: AsyncFnOnce(PullModelStatusStream) -> Result<()> + Send + Sync,
 {
     let model_name = format!("{}:{}", name, token_size);
     let stream = OL_CLIENT.pull_model_stream(model_name, false).await?;
-    f_stream(stream).await;
+    f_stream(stream).await?;
     Ok(())
 }
-pub async fn delete_model(name: &str, token_size: &str) -> OResult<()> {
+
+pub async fn delete_model(name: &str, token_size: &str) -> Result<()> {
     let model_name = format!("{}:{}", name, token_size);
     OL_CLIENT.delete_model(model_name).await?;
     Ok(())
 }
 
-pub async fn get_local_models_info() -> OResult<Vec<Model>> {
+pub async fn get_local_models_info() -> Result<Vec<Model>> {
     let db = get_omamadb_connection(ODatabse::Ochat).await;
     let model = OL_CLIENT
         .list_local_models()

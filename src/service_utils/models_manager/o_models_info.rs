@@ -1,6 +1,6 @@
 use super::super::get_current_path;
 use crate::database::{get_omamadb_connection, ODatabse};
-use crate::OResult;
+use crate::{anyhow, Result};
 
 use ollama_models_info_fetcher::{
     convert_to_json, fetch_all_available_models, fetch_model_info, Model,
@@ -32,7 +32,7 @@ where
 }
 
 /// get all models to json , returns the path as string!!!
-pub async fn load_models_from_web_to_json() -> OResult<String> {
+pub async fn load_models_from_web_to_json() -> Result<String> {
     let json_path = get_current_path()?.join("models.json");
 
     let mut f = File::options()
@@ -42,21 +42,27 @@ pub async fn load_models_from_web_to_json() -> OResult<String> {
         .truncate(true)
         .open(&json_path)?;
 
-    let models = fetch_all_available_models().await?;
+    let models = fetch_all_available_models()
+        .await
+        .map_err(|e| anyhow!(format!("{e}")))?;
 
     let mut models_info = vec![];
 
     for model_name in models {
-        models_info.push(fetch_model_info(&model_name).await?);
+        models_info.push(
+            fetch_model_info(&model_name)
+                .await
+                .map_err(|e| anyhow!(format!("{e}")))?,
+        );
     }
-    let to_json = convert_to_json(&models_info)?;
+    let to_json = convert_to_json(&models_info).map_err(|e| anyhow!(format!("{e}")))?;
 
     f.write_all(to_json.as_bytes())?;
 
     Ok(json_path.to_string_lossy().to_string())
 }
 
-pub async fn load_models_from_json_file() -> OResult<Vec<Model>> {
+pub async fn load_models_from_json_file() -> Result<Vec<Model>> {
     let file_json = get_current_path()?.join("models.json");
     let file = File::open(&file_json)?;
     let reader = BufReader::new(file);
@@ -64,8 +70,10 @@ pub async fn load_models_from_json_file() -> OResult<Vec<Model>> {
     Ok(models)
 }
 
-pub async fn fetch_models_from_web_to_db() -> OResult<()> {
-    let models = fetch_all_available_models().await?;
+pub async fn fetch_models_from_web_to_db() -> Result<()> {
+    let models = fetch_all_available_models()
+        .await
+        .map_err(|e| anyhow!(format!("{e}")))?;
     let db = get_omamadb_connection(ODatabse::Ochat).await;
     for model_name in models {
         if let Ok(m) = fetch_model_info(&model_name).await {
@@ -81,13 +89,13 @@ pub async fn fetch_models_from_web_to_db() -> OResult<()> {
 
     Ok(())
 }
-pub async fn fetch_models_from_db() -> OResult<Vec<OModelInfo>> {
+pub async fn fetch_models_from_db() -> Result<Vec<OModelInfo>> {
     let db = get_omamadb_connection(ODatabse::Ochat).await;
     let resp: Vec<OModelInfo> = db.select("model").await?;
     Ok(resp)
 }
 
-pub async fn fetch_model_by_name(name: &str) -> OResult<Model> {
+pub async fn fetch_model_by_name(name: &str) -> Result<Model> {
     let db = get_omamadb_connection(ODatabse::Ochat).await;
     let mut results = db
         .query("SELECT * OMIT id FROM type::thing('model',$name)")
@@ -100,7 +108,7 @@ pub async fn fetch_model_by_name(name: &str) -> OResult<Model> {
 mod quick_test {
     use super::OModelInfo;
     use ollama_models_info_fetcher::{fetch_all_available_models, fetch_model_info};
-    use ollama_td::OResult;
+    use ollama_td::Result;
 
     use crate::{
         database::{get_omamadb_connection, ODatabse},
@@ -108,7 +116,7 @@ mod quick_test {
     };
 
     #[tokio::test]
-    async fn check_models_from_web_to_db() -> OResult<()> {
+    async fn check_models_from_web_to_db() -> Result<()> {
         let models = fetch_all_available_models().await?;
         let db = get_omamadb_connection(ODatabse::Ochat).await;
         if let Ok(m) = fetch_model_info(&models[0]).await {
@@ -123,7 +131,7 @@ mod quick_test {
         Ok(())
     }
     #[tokio::test]
-    async fn check_models_from_db() -> OResult<()> {
+    async fn check_models_from_db() -> Result<()> {
         fetch_models_from_web_to_db().await?;
         let models = fetch_models_from_db().await?;
         //dbg!(&models);

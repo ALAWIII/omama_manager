@@ -1,11 +1,10 @@
 #![allow(unused)]
 mod linux;
 mod wind_mac;
-
-use crate::OResult;
+use crate::Result;
 use linux::*;
+pub use reqwest::Response;
 
-use reqwest::Response;
 use std::path::{Path, PathBuf};
 use wind_mac::*;
 
@@ -15,10 +14,10 @@ pub async fn install_tool(
     #[cfg(any(target_os = "windows", target_os = "macos"))] f_stream: impl AsyncFnOnce(
         Response,
         &mut Path,
-    ) -> OResult<
+    ) -> Result<
         PathBuf,
     >,
-) -> OResult<()> {
+) -> Result<()> {
     #[cfg(target_os = "linux")]
     install_linux_tool(password).await?;
 

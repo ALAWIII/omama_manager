@@ -1,10 +1,10 @@
 use super::get_current_path;
 use super::EXECUTABLE;
-use crate::OResult;
+use crate::Result;
 use std::process::Command;
 
 /// only used to check whether ollama exists in the same Omama executable directory , only for windows and macos , linux must use the official script to setup everything including the path!!!
-pub fn is_installed_locally() -> OResult<bool> {
+pub fn is_installed_locally() -> Result<bool> {
     let current_path = get_current_path()?.join(EXECUTABLE);
     Ok(current_path.exists())
 }
@@ -21,12 +21,12 @@ pub fn is_installed_globally() -> bool {
 
 #[cfg(test)]
 mod quick_test {
-    use crate::OResult;
+    use crate::Result;
 
     use super::{is_installed_globally, is_installed_locally};
 
     #[test]
-    fn local_ollama_path() -> OResult<()> {
+    fn local_ollama_path() -> Result<()> {
         let local = is_installed_locally()?;
         println!("locally: {}", local);
         Ok(())

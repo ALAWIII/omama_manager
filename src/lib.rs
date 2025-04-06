@@ -1,6 +1,6 @@
 use once_cell::sync::Lazy;
 pub mod service_utils;
-pub use ollama_td::OResult;
+pub use anyhow::{anyhow, Result};
 
 mod asset;
 pub mod chat;

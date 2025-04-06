@@ -1,19 +1,19 @@
 use ollama_rs::models::pull::PullModelStatusStream;
+use omama_manager::Result;
 use omama_manager::database::{
-    self, get_all_chats, get_all_messages, get_omamadb_connection, get_summary_of_chat,
-    insert_message, relate_m_c, store_summary_of_chat, OChat, ODatabse, OMessage,
+    self, OChat, ODatabse, OMessage, get_all_chats, get_all_messages, get_omamadb_connection,
+    get_summary_of_chat, insert_message, relate_m_c, store_summary_of_chat,
 };
 use omama_manager::rag::{
-    generate_embeddings,
+    Document, EMBEDDING_MODEL, generate_embeddings,
     generation::generate_response,
     query::{extract_queries, rewrite_query},
-    search_similar_docs, store_document, Document, EMBEDDING_MODEL,
+    search_similar_docs, store_document,
 };
-use omama_manager::OResult;
 use omama_manager::{
-    chat::{create_message, OConfig},
-    service_utils::*,
     Model, ModelBuilder,
+    chat::{OConfig, create_message},
+    service_utils::*,
 };
 use rig::completion::CompletionError;
 use rig::embeddings::EmbeddingModel;
@@ -21,12 +21,12 @@ use rig::providers::azure::O1;
 use rig::streaming::StreamingResult;
 use std::ops::Deref;
 use std::path::Path;
-use tokio::io::{stdout, AsyncWriteExt};
+use tokio::io::{AsyncWriteExt, stdout};
 use tokio_stream::StreamExt;
 
 //------------------------------------
 #[tokio::test]
-async fn check_web_models_info() -> OResult<()> {
+async fn check_web_models_info() -> Result<()> {
     let current_path = get_current_path().unwrap().join("models.json");
     let res = load_models_from_web_to_json().await?;
 
@@ -35,7 +35,7 @@ async fn check_web_models_info() -> OResult<()> {
 }
 
 #[tokio::test]
-async fn check_local_models_info() -> OResult<()> {
+async fn check_local_models_info() -> Result<()> {
     load_models_from_web_to_json().await?;
     let loaded_models = load_models_from_json_file().await;
     //dbg!(loaded_models);
@@ -45,7 +45,7 @@ async fn check_local_models_info() -> OResult<()> {
 
 //----------------------------------------------
 #[tokio::test]
-async fn setup_service() -> OResult<()> {
+async fn setup_service() -> Result<()> {
     let running = is_ollama_running().await;
     if !running {
         if !is_installed_globally() {
@@ -67,7 +67,7 @@ async fn setup_service() -> OResult<()> {
 }
 //---------------------------------models_mangement--------------
 #[tokio::test]
-async fn listing_local_models() -> OResult<()> {
+async fn listing_local_models() -> Result<()> {
     let models = get_local_models_info().await?;
     dbg!(&models);
     assert!(!models.iter().any(|m| m.name().contains("nomic-embed-text")));
@@ -80,7 +80,7 @@ async fn load_m_web_db() {
     assert!(state.is_ok());
 }
 //-------
-async fn stream_download_helper(mut status: PullModelStatusStream) -> OResult<()> {
+async fn stream_download_helper(mut status: PullModelStatusStream) -> Result<()> {
     while let Some(s) = status.next().await {
         let ms = s?;
         println!(
@@ -90,6 +90,12 @@ async fn stream_download_helper(mut status: PullModelStatusStream) -> OResult<()
         stdout().flush().await?;
     }
     Ok(())
+}
+#[tokio::test]
+async fn stream_m_download() {
+    let m_download = download_model_stream("qwen2.5", "0.5b", stream_download_helper).await;
+    dbg!(&m_download);
+    assert!(m_download.is_ok());
 }
 
 //----------------------------------database tests------------------
@@ -104,7 +110,7 @@ async fn check_ochat_connection() {
 }
 
 #[tokio::test]
-async fn fetch_all_chat() -> OResult<()> {
+async fn fetch_all_chat() -> Result<()> {
     let chats = get_all_chats().await?;
     dbg!(&chats);
     assert!(!chats.is_empty());
@@ -112,7 +118,7 @@ async fn fetch_all_chat() -> OResult<()> {
 }
 
 #[tokio::test]
-async fn fetch_all_messages() -> OResult<()> {
+async fn fetch_all_messages() -> Result<()> {
     let messages = get_all_messages(1743076482649).await?;
 
     //dbg!(&messages);
@@ -123,7 +129,7 @@ async fn fetch_all_messages() -> OResult<()> {
 }
 
 #[tokio::test]
-async fn fetch_summary_of_chat() -> OResult<()> {
+async fn fetch_summary_of_chat() -> Result<()> {
     let summary = get_summary_of_chat(1743076482649).await?;
     assert!(!summary.is_empty());
     assert_eq!(summary, "new world");
@@ -136,7 +142,7 @@ async fn check_odoc_connection() {
 //--------------------------rag tests--------------------
 
 #[tokio::test]
-async fn fetch_embeddings() -> OResult<()> {
+async fn fetch_embeddings() -> Result<()> {
     let embds = generate_embeddings("shawarma").await?;
 
     //dbg!(&embds);
@@ -144,7 +150,7 @@ async fn fetch_embeddings() -> OResult<()> {
     Ok(())
 }
 #[tokio::test]
-async fn compare_length_embeddings() -> OResult<()> {
+async fn compare_length_embeddings() -> Result<()> {
     let free = generate_embeddings("free").await?;
     let pals = generate_embeddings("palastine and hamas are heros").await?;
     //dbg!(&embds);
@@ -158,7 +164,7 @@ async fn test_embedding_model() {
     let model = EMBEDDING_MODEL.embed_text("text").await.unwrap();
 }
 #[tokio::test]
-async fn store_docs() -> OResult<()> {
+async fn store_docs() -> Result<()> {
     let expected = generate_embeddings("allawiii").await?;
     let doc = store_document(expected.clone()).await?;
     dbg!(&doc);
@@ -189,7 +195,7 @@ async fn store_n_docs() {
 }
 
 #[tokio::test]
-pub async fn check_similar_search() -> OResult<()> {
+pub async fn check_similar_search() -> Result<()> {
     let search_doc = generate_embeddings("chicken").await?;
     let docs = search_similar_docs(search_doc, 1, 0.0).await?;
     dbg!(&docs);
@@ -246,7 +252,7 @@ async fn check_summary_store() {
 //----------------//-----////--
 
 #[tokio::test]
-async fn check_message_insertion() -> OResult<()> {
+async fn check_message_insertion() -> Result<()> {
     let omsg = OMessage::new();
     let id = *omsg.id();
     let msg_inserted = insert_message(omsg).await?;
@@ -255,7 +261,7 @@ async fn check_message_insertion() -> OResult<()> {
 }
 
 #[tokio::test]
-async fn check_relate_m_c() -> OResult<()> {
+async fn check_relate_m_c() -> Result<()> {
     let omsg = OMessage::new();
     let id = *omsg.id();
     let msg_inserted = insert_message(omsg).await?;
@@ -265,7 +271,7 @@ async fn check_relate_m_c() -> OResult<()> {
 
 //-----------------------test create_chat-------------
 #[tokio::test]
-async fn check_message_creation() -> OResult<()> {
+async fn check_message_creation() -> Result<()> {
     let conf = OConfig {
         user_message: "Tell me about the history of wars in short statement".to_string(),
         c_id: 1743678992662,

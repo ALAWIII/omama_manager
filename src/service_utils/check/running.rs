@@ -1,5 +1,5 @@
 use super::get_current_path;
-use crate::OResult;
+use crate::Result;
 use reqwest::get;
 use tokio::process::Command;
 
@@ -15,7 +15,7 @@ pub async fn is_ollama_running() -> bool {
 }
 
 /// attempts to start the services if ollama is installed globally , otherwise attempts locally.
-pub async fn start_ollama_service(globally: bool) -> OResult<()> {
+pub async fn start_ollama_service(globally: bool) -> Result<()> {
     let tool = if globally {
         "ollama".to_string()
     } else {
