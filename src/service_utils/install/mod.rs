@@ -9,18 +9,19 @@ use std::path::{Path, PathBuf};
 use wind_mac::*;
 
 /// unified interface for installing ollama tool, ***password*** parameter is exclusive for linux !!
-pub async fn install_tool(
-    #[cfg(target_os = "linux")] password: &str,
-    #[cfg(any(target_os = "windows", target_os = "macos"))] f_stream: impl AsyncFnOnce(
-        Response,
-        &mut Path,
-    ) -> Result<
-        PathBuf,
-    >,
-) -> Result<()> {
-    #[cfg(target_os = "linux")]
+#[cfg(target_os = "linux")]
+pub async fn install_tool(password: &str) -> Result<()> {
     install_linux_tool(password).await?;
 
+    Ok(())
+}
+
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+pub async fn install_tool<F, Fut>(f_stream: F) -> Result<()>
+where
+    F: FnOnce(Response, PathBuf) -> Fut,
+    Fut: Future<Output = Result<PathBuf>>,
+{
     #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
     install_windows_arm_tool(f_stream).await?;
 
@@ -29,5 +30,4 @@ pub async fn install_tool(
 
     #[cfg(target_os = "macos")]
     install_macos_tool(f_stream).await?;
-    Ok(())
 }

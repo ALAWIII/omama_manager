@@ -1,11 +1,11 @@
 use crate::Result;
 use crate::{
-    database::{
-        get_summary_of_chat, insert_chat, insert_message, relate_m_c, store_summary_of_chat, OChat,
-        OMessage,
-    },
-    rag::{generate_embeddings, search_similar_docs, store_document, Document},
     Model, OM_CLIENT,
+    database::{
+        OChat, OMessage, get_summary_of_chat, insert_chat, insert_message, relate_m_c,
+        store_summary_of_chat,
+    },
+    rag::{Document, generate_embeddings, search_similar_docs, store_document},
 };
 pub use rig::streaming::StreamingResult;
 use rig::{
@@ -21,10 +21,11 @@ pub struct OConfig {
 }
 
 /// accepts a message and a chat id (to store and retrieve a summary).
-pub async fn create_message(
-    config: OConfig,
-    f_stream: impl AsyncFn(StreamingResult) -> String,
-) -> Result<(), CompletionError> {
+pub async fn create_message<F, Fut>(config: OConfig, f_stream: F) -> Result<(), CompletionError>
+where
+    F: FnOnce(StreamingResult) -> Fut,
+    Fut: Future<Output = String>,
+{
     let msg_doc = generate_embeddings(&config.user_message).await.unwrap();
     let docs = merge_docs(msg_doc).await;
     let context = get_summary_of_chat(config.c_id)

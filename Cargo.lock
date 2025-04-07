@@ -2704,9 +2704,9 @@ dependencies = [
 
 [[package]]
 name = "ollama_td"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13d16d77251fb0dde9c3c3a71578bc9aee0b49982ba568a9bb8e3a6d45fe9f12"
+checksum = "6adfbffa01dcc9b3399f7bc1488c212f06a28df1e99abea030a6f56d0996cbb9"
 dependencies = [
  "anyhow",
  "bytes",

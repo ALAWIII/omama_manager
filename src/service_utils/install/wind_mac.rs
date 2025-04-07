@@ -10,9 +10,10 @@ use std::{fs::File, path::Path};
 use tokio::fs::remove_file;
 use zip_extract::extract;
 
-pub(super) async fn install_windows_arm_tool<T>(f_stream: T) -> Result<()>
+pub(super) async fn install_windows_arm_tool<F, Fut>(f_stream: F) -> Result<()>
 where
-    T: AsyncFnOnce(Response, &mut Path) -> Result<PathBuf>,
+    F: FnOnce(Response, PathBuf) -> Fut,
+    Fut: Future<Output = Result<PathBuf>>,
 {
     let platform = Platform::Windows(Windows::Arm);
     let path_zip = download_customize(ollama_build(platform)?, f_stream).await?;
@@ -28,9 +29,10 @@ where
     Ok(())
 }
 
-pub(super) async fn install_windows_x86_tool<T>(f_stream: T) -> Result<()>
+pub(super) async fn install_windows_x86_tool<F, Fut>(f_stream: F) -> Result<()>
 where
-    T: AsyncFnOnce(Response, &mut Path) -> Result<PathBuf>,
+    F: FnOnce(Response, PathBuf) -> Fut,
+    Fut: Future<Output = Result<PathBuf>>,
 {
     let platform = Platform::Windows(Windows::X86);
     let path_zip = download_customize(ollama_build(platform)?, f_stream).await?;
@@ -46,9 +48,10 @@ where
     Ok(())
 }
 
-pub(super) async fn install_macos_tool<T>(f_stream: T) -> Result<()>
+pub(super) async fn install_macos_tool<F, Fut>(f_stream: F) -> Result<()>
 where
-    T: AsyncFnOnce(Response, &mut Path) -> Result<PathBuf>,
+    F: FnOnce(Response, PathBuf) -> Fut,
+    Fut: Future<Output = Result<PathBuf>>,
 {
     let platform = Platform::Unix(Unix::DarwinZip);
     let path_zip = download_customize(ollama_build(platform)?, f_stream).await?;
