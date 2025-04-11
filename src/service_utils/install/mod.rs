@@ -11,9 +11,8 @@ use wind_mac::*;
 /// unified interface for installing ollama tool, ***password*** parameter is exclusive for linux !!
 #[cfg(target_os = "linux")]
 pub async fn install_tool(password: &str) -> Result<()> {
-    install_linux_tool(password).await?;
+    install_linux_tool(password).await
 
-    Ok(())
 }
 
 #[cfg(any(target_os = "windows", target_os = "macos"))]
@@ -30,4 +29,6 @@ where
 
     #[cfg(target_os = "macos")]
     install_macos_tool(f_stream).await?;
+
+    Ok(())
 }
