@@ -2,7 +2,12 @@
 name = "omama_manager"
 version = "0.1.0"
 edition = "2024"
+authors = ["Allawiii"]
 
+description = "omama manager for managing conversation with ollama models."
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ALAWIII/omama_manager"
+readme = "README.md"
 [dependencies]
 
 tokio = { version = "1.43.0", features = ["full"] }
