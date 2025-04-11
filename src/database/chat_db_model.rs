@@ -2,7 +2,7 @@ use chrono::{DateTime, Local, TimeZone};
 use serde::{Deserialize, Deserializer, Serialize};
 use surrealdb::sql::Thing;
 
-use super::{get_omamadb_connection, ODatabse};
+use super::{ODatabse, get_omamadb_connection};
 
 fn deserialize_id<'de, D>(deserializer: D) -> Result<i64, D::Error>
 where
@@ -46,7 +46,7 @@ impl OChat {
     pub async fn update_name(&mut self, name: &str) {
         self.name = name.to_string();
         let db = get_omamadb_connection(ODatabse::Ochat).await;
-        let o: Option<OChat> = db
+        let _: Option<OChat> = db
             .upsert(("chat", self.id))
             .content(OChat {
                 id: self.id,

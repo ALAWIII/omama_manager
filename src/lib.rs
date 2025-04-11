@@ -1,6 +1,7 @@
+pub use ollama_rs::models::pull::PullModelStatusStream;
 use once_cell::sync::Lazy;
 pub mod service_utils;
-pub use anyhow::{anyhow, Result};
+pub use anyhow::{Result, anyhow};
 
 mod asset;
 pub mod chat;

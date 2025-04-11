@@ -1,6 +1,6 @@
 use crate::Result;
 use crate::{
-    Model, OM_CLIENT,
+    OM_CLIENT,
     database::{
         OChat, OMessage, get_summary_of_chat, insert_chat, insert_message, relate_m_c,
         store_summary_of_chat,
@@ -17,11 +17,14 @@ use rig::{
 pub struct OConfig {
     pub user_message: String,
     pub c_id: i64,
-    pub model: Model,
+    pub model_name: String,
 }
 
 /// accepts a message and a chat id (to store and retrieve a summary).
-pub async fn create_message<F, Fut>(config: OConfig, f_stream: F) -> Result<(), CompletionError>
+pub async fn create_message<F, Fut>(
+    config: OConfig,
+    f_stream: F,
+) -> Result<OMessage, CompletionError>
 where
     F: FnOnce(StreamingResult) -> Fut,
     Fut: Future<Output = String>,
@@ -32,10 +35,10 @@ where
         .await
         .unwrap_or("".to_string());
     let agent = OM_CLIENT
-        .agent(config.model.name())
-        .preamble("you are a perfect AI assistant in all disciplines.")
+        .agent(&config.model_name)
+        .preamble("You are a helpful assistant in all disciplines.")
         .context(&context)
-        .context(&format!("information:\n{docs}"))
+        //.context(&format!("information:\n{docs}"))
         .build();
     let resp = f_stream(agent.stream_prompt(&config.user_message).await?).await;
     //----------------------storing the message in ochat db---------------------
@@ -46,14 +49,13 @@ where
     relate_m_c(config.c_id, *oms.id()).await.unwrap_or_default();
     //---------------------------------generating summary and store them in ochat + odoc db's--------------------
     let prompt = format!("user:{}\nAI:{}", config.user_message, resp);
-    let summary = create_summary(config.model.name(), prompt).await;
-    dbg!(&summary);
+    let summary = create_summary(&config.model_name, prompt).await;
+    //dbg!(&summary);
     store_summary_of_chat(config.c_id, &summary)
         .await
         .unwrap_or_default();
-    store_summary_as_doc(summary).await.unwrap();
 
-    Ok(())
+    Ok(oms)
 }
 
 async fn store_summary_as_doc(summary: String) -> Result<()> {
@@ -68,6 +70,8 @@ async fn create_summary(model: &str, prompt: String) -> String {
         .build();
     agent_summary.prompt(prompt).await.unwrap_or("".to_owned())
 }
+
+/// searches the database for similar documents to the given document.
 async fn merge_docs(msg_doc: Document) -> String {
     search_similar_docs(msg_doc, 3, 0.5)
         .await

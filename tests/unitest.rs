@@ -238,7 +238,7 @@ async fn check_create_message() {
     let conf = OConfig {
         user_message: "Tell me about the history of wars in short statement".to_string(),
         c_id: 1743076482649,
-        model: ModelBuilder::new().name("deepseek-r1:1.5b").build(),
+        model_name: "deepseek-r1:1.5b".to_string(),
     };
     let resp = create_message(conf, stream_chat).await;
     //assert!(resp.is_ok());
@@ -275,7 +275,7 @@ async fn check_message_creation() -> Result<()> {
     let conf = OConfig {
         user_message: "Tell me about the history of wars in short statement".to_string(),
         c_id: 1743678992662,
-        model: ModelBuilder::new().name("deepseek-r1:1.5b").build(),
+        model_name: "deepseek-r1:1.5b".to_string(),
     };
     let msg = create_message(conf, stream_chat).await;
     Ok(())
@@ -289,4 +289,17 @@ async fn updating_chat_name() {
         ..o
     };
     o.update_name("new era of ducking").await;
+}
+//-----------
+
+#[tokio::test]
+
+async fn test_create_chat() -> Result<()> {
+    let mut conf = OConfig::default();
+    conf.c_id = 1744362398557;
+    conf.user_message = "Tell me about the history of wars in short statement".to_string();
+    conf.model_name = "deepseek-r1:1.5b".to_string();
+    let m = create_message(conf, stream_chat).await?;
+    dbg!(m);
+    Ok(())
 }

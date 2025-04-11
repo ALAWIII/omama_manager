@@ -5,7 +5,7 @@ use crate::{
 use ollama_models_info_fetcher::ModelBuilder;
 use ollama_rs::{Ollama, models::pull::PullModelStatusStream};
 use once_cell::sync::Lazy;
-use std::{collections::HashMap, pin::Pin};
+use std::collections::HashMap;
 
 const MODEL_INFO: &str = "SELECT * OMIT id FROM type::thing('model',$m_name);";
 
