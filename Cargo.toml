@@ -1,6 +1,6 @@
 [package]
 name = "omama_manager"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 authors = ["Allawiii"]
 
@@ -14,7 +14,7 @@ repository = "https://github.com/ALAWIII/omama_manager"
 tokio = { version = "1.43.0", features = ["full"] }
 reqwest = { version = "0.12.12", features = ["rustls-tls"] }
 ollama_td = "0.4.0"
-ollama_models_info_fetcher = "0.1.2"
+ollama_models_info_fetcher = "0.1.3"
 zip-extract = "0.2.1"
 
 serde = { version = "1.0.217", features = ["derive"] }

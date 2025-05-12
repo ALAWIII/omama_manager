@@ -2687,9 +2687,9 @@ dependencies = [
 
 [[package]]
 name = "ollama_models_info_fetcher"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "959c4542550a1a2364df249d2b1a0f93f3be9ee5c303816f627ca63b8ff4fe6c"
+checksum = "ea614ee25d75b05b6bd95562c16e7f1dcf77141c3bf578d7b5bec6c8a5e572c4"
 dependencies = [
  "anyhow",
  "htmd",
@@ -2719,7 +2719,7 @@ dependencies = [
 
 [[package]]
 name = "omama_manager"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",

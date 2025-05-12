@@ -12,7 +12,6 @@ use wind_mac::*;
 #[cfg(target_os = "linux")]
 pub async fn install_tool(password: &str) -> Result<()> {
     install_linux_tool(password).await
-
 }
 
 #[cfg(any(target_os = "windows", target_os = "macos"))]
